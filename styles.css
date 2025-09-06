@@ -1,0 +1,220 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+h1 {
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.add-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.add-btn:hover {
+  background-color: #45a049;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.stopwatch {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s;
+}
+
+.stopwatch.times-up {
+  background-color: #ffcccc;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.stopwatch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.stopwatch-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.delete-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.delete-btn:hover {
+  background-color: #da190b;
+}
+
+.display {
+  font-size: 36px;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  margin: 20px 0;
+  color: #333;
+  font-weight: bold;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.controls button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.start {
+  background-color: #2196F3;
+  color: white;
+}
+
+.start:hover {
+  background-color: #1976D2;
+}
+
+.lap {
+  background-color: #9C27B0;
+  color: white;
+}
+
+.lap:hover {
+  background-color: #7B1FA2;
+}
+
+.lap:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.reset {
+  background-color: #FF9800;
+  color: white;
+}
+
+.reset:hover {
+  background-color: #F57C00;
+}
+
+.countdown-section {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+}
+
+.countdown-input {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  text-align: center;
+  width: 80px;
+  font-family: 'Courier New', monospace;
+}
+
+.set {
+  background-color: #4CAF50;
+  color: white;
+  padding: 5px 15px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.set:hover {
+  background-color: #45a049;
+}
+
+.mode-indicator {
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.times-up-message {
+  text-align: center;
+  font-size: 24px;
+  color: #f44336;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.laps {
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+}
+
+.laps h4 {
+  color: #666;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.laps li {
+  padding: 5px;
+  border-bottom: 1px solid #f0f0f0;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+}
+
+.laps li:hover {
+  background-color: #f9f9f9;
+}
