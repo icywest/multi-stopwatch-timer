@@ -1,220 +1,115 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+:root {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background-color: #f0f0f0;
-  padding: 20px;
+  margin: 16px;
+  background: #f5f7fb;
+  color: #0b1220;
 }
 
-header {
-  text-align: center;
-  margin-bottom: 30px;
+/* Toolbar */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
-h1 {
-  color: #333;
-  margin-bottom: 20px;
+/* Inputs and buttons */
+select,
+input,
+button {
+  font-size: 14px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(11, 18, 32, 0.12);
 }
 
-.add-btn {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  font-size: 16px;
-  border-radius: 5px;
+button {
   cursor: pointer;
-  transition: background-color 0.3s;
 }
 
-.add-btn:hover {
-  background-color: #45a049;
-}
-
-#app {
+/* Timers grid */
+#timers-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
 }
 
-.stopwatch {
+/* Timer card */
+.timer-card {
   background: white;
+  padding: 12px;
   border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  transition: all 0.3s;
+  box-shadow: 0 6px 18px rgba(11, 18, 32, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.stopwatch.times-up {
-  background-color: #ffcccc;
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.02); }
-  100% { transform: scale(1); }
-}
-
-.stopwatch-header {
+.timer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
 }
 
-.stopwatch-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-}
-
-.delete-btn {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.delete-btn:hover {
-  background-color: #da190b;
-}
-
-.display {
-  font-size: 36px;
-  font-family: 'Courier New', monospace;
+/* Display */
+.time-display {
+  font-family: monospace;
+  font-size: 20px;
+  padding: 8px 6px;
+  border-radius: 6px;
+  background: #f1f6ff;
   text-align: center;
-  margin: 20px 0;
-  color: #333;
-  font-weight: bold;
 }
 
+/* Timer inputs */
+.timer-inputs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Controls */
 .controls {
   display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-bottom: 15px;
+  gap: 6px;
 }
 
 .controls button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  flex: 1;
 }
 
-.start {
-  background-color: #2196F3;
-  color: white;
-}
-
-.start:hover {
-  background-color: #1976D2;
-}
-
-.lap {
-  background-color: #9C27B0;
-  color: white;
-}
-
-.lap:hover {
-  background-color: #7B1FA2;
-}
-
-.lap:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.reset {
-  background-color: #FF9800;
-  color: white;
-}
-
-.reset:hover {
-  background-color: #F57C00;
-}
-
-.countdown-section {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 15px;
-  padding: 10px;
-  background-color: #f5f5f5;
-  border-radius: 5px;
-}
-
-.countdown-input {
-  padding: 5px;
-  border: 1px solid #ddd;
-  border-radius: 3px;
-  text-align: center;
-  width: 80px;
-  font-family: 'Courier New', monospace;
-}
-
-.set {
-  background-color: #4CAF50;
-  color: white;
-  padding: 5px 15px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.set:hover {
-  background-color: #45a049;
-}
-
-.mode-indicator {
-  text-align: center;
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 10px;
-}
-
-.times-up-message {
-  text-align: center;
-  font-size: 24px;
-  color: #f44336;
-  font-weight: bold;
-  margin: 10px 0;
-}
-
+/* Laps */
 .laps {
-  list-style: none;
-  max-height: 200px;
-  overflow-y: auto;
-  border-top: 1px solid #eee;
-  padding-top: 10px;
+  border-top: 1px dashed rgba(11, 18, 32, 0.06);
+  padding-top: 8px;
 }
 
-.laps h4 {
-  color: #666;
-  margin-bottom: 10px;
-  font-size: 14px;
+/* Expired state */
+.expired {
+  border: 2px solid #ffb4b4;
 }
 
-.laps li {
-  padding: 5px;
-  border-bottom: 1px solid #f0f0f0;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
+.expired-message {
+  color: #b00020;
+  font-weight: 700;
 }
 
-.laps li:hover {
-  background-color: #f9f9f9;
+/* Delete button */
+.delete-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #9aa3b2;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

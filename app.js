@@ -1,274 +1,348 @@
-// Helper function to format time
-function format(ms) {
-  const m = Math.floor(ms / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const mm = String(m).padStart(2, '0');
-  const ss = String(s).padStart(2, '0');
-  const mmm = String(ms % 1000).padStart(3, '0');
+// ====== Utilities ======
+
+// Format milliseconds to MM:SS.mmm
+function formatTime(ms) {
+  ms = Math.max(0, Math.floor(ms));
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const milliseconds = ms % 1000;
+  const mm = String(minutes).padStart(2, '0');
+  const ss = String(seconds).padStart(2, '0');
+  const mmm = String(milliseconds).padStart(3, '0');
   return `${mm}:${ss}.${mmm}`;
 }
 
-// Stopwatch counter for unique IDs
-let stopwatchID = 0;
+// Convert minutes and seconds to milliseconds
+function parseTime(minutes, seconds) {
+  return (Number(minutes) * 60 + Number(seconds)) * 1000;
+}
 
-// Stopwatch class
-class Stopwatch {
-  constructor(id) {
-    this.id = id;
-    this.startTs = null;
-    this.elapsed = 0;
-    this.timerId = null;
-    this.laps = [];
-    this.mode = 'stopwatch'; // 'stopwatch' or 'countdown'
-    this.countdownTime = 0;
-    this.element = null;
+// Create a DOM element with optional className and text
+function createElement(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+
+// ====== Countdown Model ======
+
+// Factory to create a countdown/stopwatch object
+function createTimer(id, type) {
+  return {
+    id: Number(id),
+    type: type || 'stopwatch', // 'stopwatch' or 'countdown'
+    startTime: null,           // timestamp when started
+    pausedTime: 0,             // elapsed or remaining time
+    targetTime: 0,             // for countdown: total duration
+    isRunning: false,
+    laps: [],
+    element: null              // references to DOM elements
+  };
+}
+
+// ====== Storage ======
+
+// Save timers to localStorage
+function saveToStorage(timers) {
+  try {
+    const data = [];
+    timers.forEach(function(timer) {
+      data.push({
+        id: Number(timer.id),
+        type: timer.type,
+        pausedTime: timer.pausedTime,
+        targetTime: timer.targetTime,
+        laps: timer.laps
+      });
+    });
+    localStorage.setItem('timers', JSON.stringify(data));
+  } catch (e) {
+    console.error('saveToStorage error', e);
   }
+}
 
-  createElement() {
-    const div = document.createElement('div');
-    div.className = 'stopwatch';
-    div.id = `stopwatch-${this.id}`;
+// Load timers from localStorage
+function loadFromStorage() {
+  const timers = new Map();
+  try {
+    const raw = localStorage.getItem('timers');
+    if (!raw) return timers;
 
-    // Construimos el contenido sin innerHTML
-    const header = document.createElement('div');
-    header.className = 'stopwatch-header';
+    const data = JSON.parse(raw || '[]');
+    data.forEach(function(item) {
+      const id = Number(item.id);
+      const timer = createTimer(id, item.type || 'stopwatch');
+      timer.pausedTime = Number(item.pausedTime) || 0;
+      timer.targetTime = Number(item.targetTime) || 0;
+      timer.laps = Array.isArray(item.laps) ? item.laps.map(Number) : [];
+      timers.set(id, timer);
+    });
+  } catch (e) {
+    console.error('Error loading timers:', e);
+  }
+  return timers;
+}
 
-    const title = document.createElement('h3');
-    title.className = 'stopwatch-title';
-    title.textContent = `Stopwatch ${this.id}`;
+// ====== Timer Card (DOM) ======
 
-    const delBtn = document.createElement('button');
-    delBtn.className = 'delete-btn';
-    delBtn.textContent = 'Delete';
+function createTimerCard(timer) {
+  const card = createElement('div', 'timer-card');
+  card.id = 'timer-' + timer.id;
 
-    header.appendChild(title);
-    header.appendChild(delBtn);
+  // Header with mode selector and delete button
+  const header = createElement('div', 'timer-header');
+  const modeSelect = createElement('select', 'mode-select');
+  const opt1 = createElement('option'); opt1.value = 'stopwatch'; opt1.textContent = 'Stopwatch';
+  const opt2 = createElement('option'); opt2.value = 'timer'; opt2.textContent = 'Countdown';
+  modeSelect.appendChild(opt1); modeSelect.appendChild(opt2);
+  modeSelect.value = timer.type;
 
-    const modeIndicator = document.createElement('div');
-    modeIndicator.className = 'mode-indicator';
-    modeIndicator.textContent = 'Mode: Stopwatch';
+  const deleteBtn = createElement('button', 'delete-btn', '×');
+  header.appendChild(modeSelect);
+  header.appendChild(deleteBtn);
 
-    const display = document.createElement('div');
-    display.className = 'display';
-    display.textContent = '00:00.000';
+  // Display area
+  const display = createElement('div', 'time-display',
+    formatTime(timer.type === 'timer' ? (timer.targetTime || 0) : (timer.pausedTime || 0))
+  );
 
-    const controls = document.createElement('div');
-    controls.className = 'controls';
+  // Inputs for countdown duration
+  const timerInputs = createElement('div', 'timer-inputs');
+  const minutesInput = createElement('input', 'minutes-input');
+  minutesInput.type = 'number'; minutesInput.placeholder = 'MM'; minutesInput.min = '0'; minutesInput.max = '99';
+  const sep = createElement('span', null, ':');
+  const secondsInput = createElement('input', 'seconds-input');
+  secondsInput.type = 'number'; secondsInput.placeholder = 'SS'; secondsInput.min = '0'; secondsInput.max = '59';
+  const setBtn = createElement('button', 'set-btn', 'Set');
+  timerInputs.appendChild(minutesInput); timerInputs.appendChild(sep); timerInputs.appendChild(secondsInput); timerInputs.appendChild(setBtn);
+  if (timer.type !== 'timer') timerInputs.style.display = 'none';
 
-    const startBtn = document.createElement('button');
-    startBtn.className = 'start';
-    startBtn.textContent = 'Start';
+  // Controls: Start, Lap, Reset
+  const controls = createElement('div', 'controls');
+  const startBtn = createElement('button', 'control-btn start', 'Start');
+  const lapBtn = createElement('button', 'control-btn', 'Lap'); lapBtn.disabled = true;
+  const resetBtn = createElement('button', 'control-btn reset', 'Reset');
+  controls.appendChild(startBtn); controls.appendChild(lapBtn); controls.appendChild(resetBtn);
 
-    const lapBtn = document.createElement('button');
-    lapBtn.className = 'lap';
-    lapBtn.textContent = 'Lap';
+  // Laps container
+  const lapsContainer = createElement('div', 'laps'); lapsContainer.style.display = 'none';
+
+  // Assemble card
+  card.appendChild(header); card.appendChild(display); card.appendChild(timerInputs); card.appendChild(controls); card.appendChild(lapsContainer);
+
+  // Store references
+  timer.element = { card, display, startBtn, lapBtn, resetBtn, deleteBtn, setBtn, modeSelect, timerInputs, minutesInput, secondsInput, lapsContainer };
+
+  // Initial lap state
+  if (timer.type === 'stopwatch') {
+    lapBtn.disabled = !timer.isRunning;
+  } else {
     lapBtn.disabled = true;
-
-    const resetBtn = document.createElement('button');
-    resetBtn.className = 'reset';
-    resetBtn.textContent = 'Reset';
-
-    controls.append(startBtn, lapBtn, resetBtn);
-
-    const countdownSection = document.createElement('div');
-    countdownSection.className = 'countdown-section';
-
-    const countdownInput = document.createElement('input');
-    countdownInput.className = 'countdown-input';
-    countdownInput.placeholder = 'MM:SS';
-
-    const setBtn = document.createElement('button');
-    setBtn.className = 'set';
-    setBtn.textContent = 'Set Countdown';
-
-    countdownSection.append(countdownInput, setBtn);
-
-    const lapsContainer = document.createElement('div');
-    lapsContainer.className = 'laps-container';
-
-    div.append(header, modeIndicator, display, controls, countdownSection, lapsContainer);
-
-    this.element = div;
-    this.attachEventListeners();
-    return div;
   }
 
-  attachEventListeners() {
-    const startBtn = this.element.querySelector('.start');
-    const lapBtn = this.element.querySelector('.lap');
-    const resetBtn = this.element.querySelector('.reset');
-    const setBtn = this.element.querySelector('.set');
-    const deleteBtn = this.element.querySelector('.delete-btn');
-    const countdownInput = this.element.querySelector('.countdown-input');
+  return card;
+}
 
-    startBtn.addEventListener('click', () => this.toggleStartPause());
-    lapBtn.addEventListener('click', () => this.addLap());
-    resetBtn.addEventListener('click', () => this.reset());
-    setBtn.addEventListener('click', () => this.setCountdown());
-    deleteBtn.addEventListener('click', () => this.delete());
-    
-    // Allow Enter key to set countdown
-    countdownInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') this.setCountdown();
-    });
+// ====== Core Logic ======
+
+// Get current time: elapsed for stopwatch, remaining for countdown
+function getCurrentTime(timer) {
+  if (!timer.isRunning) {
+    if (Number(timer.pausedTime) > 0) return Number(timer.pausedTime);
+    return timer.type === 'timer' ? Number(timer.targetTime || 0) : 0;
   }
+  const elapsed = Date.now() - Number(timer.startTime || 0);
+  if (timer.type === 'stopwatch') return elapsed;
+  return Math.max(0, Number(timer.targetTime || 0) - elapsed);
+}
 
-  toggleStartPause() {
-    const startBtn = this.element.querySelector('.start');
-    const lapBtn = this.element.querySelector('.lap');
+// Start a timer or countdown
+function startTimer(timer) {
+  if (timer.type === 'stopwatch') {
+    timer.startTime = Date.now() - (Number(timer.pausedTime) || 0);
+  } else {
+    // countdown: calculate remaining time
+    const remaining = Number(timer.pausedTime) || Number(timer.targetTime);
+    timer.startTime = Date.now() - (Number(timer.targetTime) - remaining);
+  }
+  timer.isRunning = true;
+  timer.element.startBtn.textContent = 'Pause';
+  timer.element.lapBtn.disabled = (timer.type !== 'stopwatch');
+}
 
-    if (this.timerId) {
-      this.pause();
-      startBtn.textContent = 'Start';
-      lapBtn.disabled = true;
-    } else {
-      this.start();
-      startBtn.textContent = 'Pause';
-      lapBtn.disabled = false;
+// Pause a timer or countdown
+function pauseTimer(timer) {
+  timer.pausedTime = getCurrentTime(timer);
+  timer.isRunning = false;
+  timer.element.startBtn.textContent = 'Start';
+  timer.element.lapBtn.disabled = true;
+}
+
+// Reset timer or countdown
+function resetTimer(timer) {
+  timer.startTime = null; timer.pausedTime = 0; timer.isRunning = false; timer.laps = [];
+  timer.element.startBtn.textContent = 'Start'; timer.element.lapBtn.disabled = true;
+  updateDisplay(timer); updateLaps(timer);
+}
+
+// Add a lap for stopwatch
+function addLap(timer) {
+  if (!timer.isRunning || timer.type !== 'stopwatch') return;
+  timer.laps.push(getCurrentTime(timer));
+  updateLaps(timer);
+}
+
+// Update displayed time and handle countdown expiration
+function updateDisplay(timer) {
+  if (!timer.element) return;
+
+  const time = getCurrentTime(timer);
+  timer.element.display.textContent = formatTime(time);
+
+  if (timer.type === 'timer' && time === 0 && Number(timer.targetTime) > 0) {
+    timer.element.card.classList.add('expired');
+
+    if (!timer.element.expiredMsg) {
+      const msg = createElement('div', 'expired-message', "Time's Up!");
+      timer.element.display.insertAdjacentElement('afterend', msg);
+      timer.element.expiredMsg = msg;
     }
-  }
 
-  start() {
-    if (this.mode === 'stopwatch') {
-      this.startTs = Date.now() - this.elapsed;
-    } else {
-      this.startTs = Date.now() + this.elapsed;
+    if (timer.element.startBtn) timer.element.startBtn.disabled = true;
+  } else {
+    timer.element.card.classList.remove('expired');
+    if (timer.element.expiredMsg) {
+      timer.element.expiredMsg.remove();
+      timer.element.expiredMsg = null;
     }
-    this.timerId = setInterval(() => this.tick(), 16);
-  }
-
-  pause() {
-    clearInterval(this.timerId);
-    this.timerId = null;
-  }
-
-  tick() {
-    const display = this.element.querySelector('.display');
-    
-    if (this.mode === 'stopwatch') {
-      this.elapsed = Date.now() - this.startTs;
-      display.textContent = format(this.elapsed);
-    } else {
-      const remaining = this.startTs - Date.now();
-      if (remaining <= 0) {
-        this.elapsed = 0;
-        display.textContent = '00:00.000';
-        this.pause();
-        this.timesUp();
-      } else {
-        this.elapsed = remaining;
-        display.textContent = format(remaining);
-      }
-    }
-  }
-
-  timesUp() {
-    this.element.classList.add('times-up');
-    const message = document.createElement('div');
-    message.className = 'times-up-message';
-    message.textContent = "Time's up!";
-    this.element.querySelector('.display').after(message);
-    this.element.querySelector('.start').disabled = true;
-    this.element.querySelector('.lap').disabled = true;
-  }
-
-  reset() {
-    this.pause();
-    this.elapsed = 0;
-    this.startTs = null;
-    this.laps = [];
-    this.element.querySelector('.display').textContent = '00:00.000';
-
-    const startBtn = this.element.querySelector('.start');
-    startBtn.textContent = 'Start';
-    startBtn.disabled = false;
-    this.element.querySelector('.lap').disabled = true;
-
-    const lapsContainer = this.element.querySelector('.laps-container');
-    lapsContainer.textContent = '';
-
-    this.element.classList.remove('times-up');
-    const timesUpMsg = this.element.querySelector('.times-up-message');
-    if (timesUpMsg) timesUpMsg.remove();
-
-    this.mode = 'stopwatch';
-    this.element.querySelector('.mode-indicator').textContent = 'Mode: Stopwatch';
-  }
-
-  addLap() {
-    if (this.mode !== 'stopwatch' || !this.timerId) return;
-    this.laps.push(this.elapsed);
-    this.renderLaps();
-  }
-
-  renderLaps() {
-    const container = this.element.querySelector('.laps-container');
-    container.textContent = '';
-
-    if (this.laps.length === 0) return;
-
-    const ul = document.createElement('ul');
-    ul.className = 'laps';
-
-    const header = document.createElement('h4');
-    header.textContent = 'Laps';
-    ul.appendChild(header);
-
-    this.laps.forEach((lap, index) => {
-      const li = document.createElement('li');
-      li.textContent = `${index + 1}) ${format(lap)}`;
-      ul.appendChild(li);
-    });
-
-    container.appendChild(ul);
-  }
-
-  setCountdown() {
-    const input = this.element.querySelector('.countdown-input');
-    const value = input.value.trim();
-    const match = value.match(/^(\d{1,2}):(\d{1,2})$/);
-    if (!match) {
-      alert('Please enter time in MM:SS format (e.g., 02:30)');
-      return;
-    }
-    const minutes = parseInt(match[1], 10);
-    const seconds = parseInt(match[2], 10);
-
-    if (seconds >= 60) {
-      alert('Seconds must be less than 60');
-      return;
-    }
-    this.reset();
-
-    this.mode = 'countdown';
-    this.element.querySelector('.mode-indicator').textContent = 'Mode: Countdown';
-
-    const totalMs = (minutes * 60 + seconds) * 1000;
-    this.elapsed = totalMs;
-    this.countdownTime = totalMs;
-    this.element.querySelector('.display').textContent = format(totalMs);
-
-    input.value = '';
-  }
-
-  delete() {
-    if (confirm(`Delete Stopwatch ${this.id}?`)) {
-      this.pause();
-      this.element.remove();
+    if (timer.element.startBtn && !timer.isRunning) {
+      timer.element.startBtn.disabled = false;
     }
   }
 }
 
-// Main app logic
-document.addEventListener('DOMContentLoaded', () => {
-  const addBtn = document.getElementById('add');
-  const app = document.getElementById('app');
-  
-  addBtn.addEventListener('click', () => {
-    stopwatchID++;
-    const stopwatch = new Stopwatch(stopwatchID);
-    app.appendChild(stopwatch.createElement());
+// Update laps container
+function updateLaps(timer) {
+  const c = timer.element.lapsContainer;
+  while (c.firstChild) c.removeChild(c.firstChild);
+  if (!timer.laps || timer.laps.length === 0) { c.style.display = 'none'; return; }
+  c.style.display = 'block';
+  const title = createElement('h4', null, 'Laps'); c.appendChild(title);
+  timer.laps.forEach(function(lap, i) {
+    const d = createElement('div', 'lap', `Lap ${i + 1}: ${formatTime(lap)}`);
+    c.appendChild(d);
   });
-  
-  addBtn.click();
-});
+}
+
+// ====== App Logic ======
+
+function createApp() {
+  const timers = loadFromStorage();
+  let nextId = 1;
+  if (timers.size > 0) nextId = Math.max(...Array.from(timers.keys()).map(Number)) + 1;
+  const intervals = new Map();
+  const container = document.getElementById('timers-container');
+
+  // Update loop per timer
+  function updateTimerLoop(timer) {
+    const time = getCurrentTime(timer);
+    updateDisplay(timer);
+    if (timer.type === 'timer' && time === 0) {
+      pauseTimer(timer);
+      if (intervals.has(timer.id)) { clearInterval(intervals.get(timer.id)); intervals.delete(timer.id); }
+      if (timer.element && timer.element.startBtn) timer.element.startBtn.disabled = true;
+      saveToStorage(timers);
+    }
+  }
+
+  // Add a new timer or countdown
+  function addTimer(type) {
+    const timer = createTimer(nextId++, type);
+    timers.set(timer.id, timer);
+    const card = createTimerCard(timer);
+    container.appendChild(card);
+    attachEventListeners(timer);
+    updateDisplay(timer);
+    saveToStorage(timers);
+  }
+
+  // Remove a timer/countdown
+  function removeTimer(timer) {
+    if (!confirm(`Delete this ${timer.type}?`)) return;
+    if (intervals.has(timer.id)) { clearInterval(intervals.get(timer.id)); intervals.delete(timer.id); }
+    if (timer.element && timer.element.card) timer.element.card.remove();
+    timers.delete(timer.id);
+    saveToStorage(timers);
+  }
+
+  // Switch between stopwatch and countdown
+  function switchMode(timer, newMode) {
+    if (timer.isRunning) { pauseTimer(timer); if (intervals.has(timer.id)) { clearInterval(intervals.get(timer.id)); intervals.delete(timer.id); } }
+    timer.type = newMode; timer.targetTime = 0; resetTimer(timer);
+    if (timer.element) timer.element.timerInputs.style.display = (newMode === 'timer') ? 'flex' : 'none';
+    saveToStorage(timers);
+  }
+
+  // Set countdown duration
+  function setTimerDuration(timer) {
+    const mins = parseInt(timer.element.minutesInput.value) || 0;
+    const secs = parseInt(timer.element.secondsInput.value) || 0;
+    if (mins === 0 && secs === 0) return;
+    if (secs >= 60) { alert('Seconds must be less than 60'); return; }
+    resetTimer(timer);
+    timer.targetTime = parseTime(mins, secs);
+    timer.pausedTime = timer.targetTime;
+    updateDisplay(timer);
+    timer.element.minutesInput.value = '';
+    timer.element.secondsInput.value = '';
+    if (timer.element.startBtn) timer.element.startBtn.disabled = false;
+    saveToStorage(timers);
+  }
+
+  // Attach DOM event listeners
+  function attachEventListeners(timer) {
+    timer.element.startBtn.addEventListener('click', function() {
+      if (timer.isRunning) {
+        pauseTimer(timer);
+        if (intervals.has(timer.id)) { clearInterval(intervals.get(timer.id)); intervals.delete(timer.id); }
+      } else {
+        startTimer(timer);
+        intervals.set(timer.id, setInterval(function() { updateTimerLoop(timer); }, 50));
+      }
+      saveToStorage(timers);
+    });
+
+    timer.element.lapBtn.addEventListener('click', function() { addLap(timer); saveToStorage(timers); });
+    timer.element.resetBtn.addEventListener('click', function() {
+      if (timer.isRunning) { if (intervals.has(timer.id)) { clearInterval(intervals.get(timer.id)); intervals.delete(timer.id); } }
+      resetTimer(timer); if (timer.element && timer.element.startBtn) timer.element.startBtn.disabled = false; saveToStorage(timers);
+    });
+    timer.element.modeSelect.addEventListener('change', function(e) { switchMode(timer, e.target.value); });
+    timer.element.deleteBtn.addEventListener('click', function() { removeTimer(timer); });
+    timer.element.setBtn.addEventListener('click', function() { setTimerDuration(timer); });
+  }
+
+  // Initialize saved timers
+  timers.forEach(function(timer) {
+    const card = createTimerCard(timer);
+    container.appendChild(card);
+    attachEventListeners(timer);
+    updateDisplay(timer);
+    if (timer.laps && timer.laps.length > 0) updateLaps(timer);
+  });
+
+  // Add new countdown/timer button
+  document.getElementById('add-timer-btn').addEventListener('click', function() {
+    const type = document.getElementById('timer-type-select').value || 'stopwatch';
+    addTimer(type);
+  });
+
+  // Clear all saved timers
+  document.getElementById('clear-storage-btn').addEventListener('click', function() {
+    if (confirm('Clear saved timers?')) { localStorage.removeItem('timers'); location.reload(); }
+  });
+
+  if (!container) console.warn('timers-container element not found');
+}

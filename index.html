@@ -2,17 +2,28 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Multi-Stopwatch</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MultiTimer App</title>
+  <link rel="icon" href="sand-clock-timer-svgrepo-com.svg">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <h1>Multi-Stopwatch App</h1>
-    <button id="add" class="add-btn">Add Stopwatch</button>
-  </header>
-  <main id="app"></main>
-  
-  <script src="app.js"></script>
+  <h2>Multi Timer App</h2>
+  <div class="toolbar">
+    <label>
+      Mode:
+      <select id="timer-type-select">
+        <option value="stopwatch">Stopwatch</option>
+        <option value="timer">Countdown</option>
+      </select>
+    </label>
+    <button id="add-timer-btn">Add New</button>
+    <button id="clear-storage-btn">Clear Saved Timers</button>
+  </div>
+
+  <div id="timers-container"></div>
+
+  <script src="app.js">
+  </script>
 </body>
 </html>
