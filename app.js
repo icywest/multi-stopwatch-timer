@@ -1,5 +1,4 @@
 // ====== Utilities ======
-
 // Format milliseconds to MM:SS.mmm
 function formatTime(ms) {
   ms = Math.max(0, Math.floor(ms));
@@ -26,25 +25,23 @@ function createElement(tag, className, text) {
   return el;
 }
 
-// ====== Countdown Model ======
-
+// ====== Model ======
 // Factory to create a countdown/stopwatch object
 function createTimer(id, type) {
   return {
     id: Number(id),
-    type: type || 'stopwatch', // 'stopwatch' or 'countdown'
-    startTime: null,           // timestamp when started
-    pausedTime: 0,             // elapsed or remaining time
-    targetTime: 0,             // for countdown: total duration
+    type: type || 'stopwatch',
+    title: `${type === 'timer' ? 'Timer' : 'Stopwatch'} ${id}`,
+    startTime: null,
+    pausedTime: 0,
+    targetTime: 0,
     isRunning: false,
     laps: [],
-    element: null              // references to DOM elements
+    element: null
   };
 }
-
 // ====== Storage ======
-
-// Save timers to localStorage
+// Save timers
 function saveToStorage(timers) {
   try {
     const data = [];
@@ -63,7 +60,7 @@ function saveToStorage(timers) {
   }
 }
 
-// Load timers from localStorage
+// Load timers
 function loadFromStorage() {
   const timers = new Map();
   try {
@@ -86,13 +83,17 @@ function loadFromStorage() {
 }
 
 // ====== Timer Card (DOM) ======
-
 function createTimerCard(timer) {
   const card = createElement('div', 'timer-card');
   card.id = 'timer-' + timer.id;
 
-  // Header with mode selector and delete button
+  // Header with title, mode selector and delete button
   const header = createElement('div', 'timer-header');
+    const title = createElement('h3', 'timer-title', timer.title);
+  title.contentEditable = false;
+  
+  // Header controls (mode selector and delete button)
+  const headerControls = createElement('div', 'header-controls');
   const modeSelect = createElement('select', 'mode-select');
   const opt1 = createElement('option'); opt1.value = 'stopwatch'; opt1.textContent = 'Stopwatch';
   const opt2 = createElement('option'); opt2.value = 'timer'; opt2.textContent = 'Countdown';
@@ -100,8 +101,12 @@ function createTimerCard(timer) {
   modeSelect.value = timer.type;
 
   const deleteBtn = createElement('button', 'delete-btn', '×');
-  header.appendChild(modeSelect);
-  header.appendChild(deleteBtn);
+  headerControls.appendChild(modeSelect);
+  headerControls.appendChild(deleteBtn);
+  
+  // Add title and controls to header
+  header.appendChild(title);
+  header.appendChild(headerControls);
 
   // Display area
   const display = createElement('div', 'time-display',
@@ -130,10 +135,17 @@ function createTimerCard(timer) {
   const lapsContainer = createElement('div', 'laps'); lapsContainer.style.display = 'none';
 
   // Assemble card
-  card.appendChild(header); card.appendChild(display); card.appendChild(timerInputs); card.appendChild(controls); card.appendChild(lapsContainer);
+  card.appendChild(header); 
+  card.appendChild(display); 
+  card.appendChild(timerInputs); 
+  card.appendChild(controls); 
+  card.appendChild(lapsContainer);
 
   // Store references
-  timer.element = { card, display, startBtn, lapBtn, resetBtn, deleteBtn, setBtn, modeSelect, timerInputs, minutesInput, secondsInput, lapsContainer };
+  timer.element = { 
+    card, display, startBtn, lapBtn, resetBtn, deleteBtn, setBtn, modeSelect, 
+    timerInputs, minutesInput, secondsInput, lapsContainer, title
+  };
 
   // Initial lap state
   if (timer.type === 'stopwatch') {
@@ -146,26 +158,32 @@ function createTimerCard(timer) {
 }
 
 // ====== Core Logic ======
-
 // Get current time: elapsed for stopwatch, remaining for countdown
 function getCurrentTime(timer) {
   if (!timer.isRunning) {
-    if (Number(timer.pausedTime) > 0) return Number(timer.pausedTime);
-    return timer.type === 'timer' ? Number(timer.targetTime || 0) : 0;
+    if (timer.type === 'stopwatch') {
+      return Number(timer.pausedTime) || 0;
+    } else { // timer (countdown)
+      return Number(timer.pausedTime) || Number(timer.targetTime) || 0;
+    }
   }
+  if (!timer.startTime) return 0;
+  // Calculate elapsed time
   const elapsed = Date.now() - Number(timer.startTime || 0);
-  if (timer.type === 'stopwatch') return elapsed;
-  return Math.max(0, Number(timer.targetTime || 0) - elapsed);
+  if (timer.type === 'stopwatch') {
+    return elapsed;
+  }
+  return Math.max(0, Number(timer.targetTime) - elapsed);
 }
 
 // Start a timer or countdown
 function startTimer(timer) {
   if (timer.type === 'stopwatch') {
-    timer.startTime = Date.now() - (Number(timer.pausedTime) || 0);
-  } else {
-    // countdown: calculate remaining time
-    const remaining = Number(timer.pausedTime) || Number(timer.targetTime);
-    timer.startTime = Date.now() - (Number(timer.targetTime) - remaining);
+    timer.startTime = Date.now() - (timer.pausedTime || 0);
+  } else { // countdown
+    const remaining = timer.pausedTime || timer.targetTime;
+    timer.startTime = Date.now();
+    timer.pausedTime = remaining;
   }
   timer.isRunning = true;
   timer.element.startBtn.textContent = 'Pause';
@@ -182,9 +200,14 @@ function pauseTimer(timer) {
 
 // Reset timer or countdown
 function resetTimer(timer) {
-  timer.startTime = null; timer.pausedTime = 0; timer.isRunning = false; timer.laps = [];
-  timer.element.startBtn.textContent = 'Start'; timer.element.lapBtn.disabled = true;
-  updateDisplay(timer); updateLaps(timer);
+  timer.startTime = null;
+  timer.pausedTime = (timer.type === 'timer') ? timer.targetTime : 0;
+  timer.isRunning = false;
+  timer.laps = [];
+  timer.element.startBtn.textContent = 'Start';
+  timer.element.lapBtn.disabled = true;
+  updateDisplay(timer);
+  updateLaps(timer);
 }
 
 // Add a lap for stopwatch
@@ -210,6 +233,7 @@ function updateDisplay(timer) {
       timer.element.expiredMsg = msg;
     }
 
+    pauseTimer(timer);
     if (timer.element.startBtn) timer.element.startBtn.disabled = true;
   } else {
     timer.element.card.classList.remove('expired');
@@ -236,8 +260,37 @@ function updateLaps(timer) {
   });
 }
 
-// ====== App Logic ======
+function enableTitleEdit(timer) {
+  const titleEl = timer.element.title;
+  titleEl.contentEditable = true;
+  titleEl.classList.add('editing');
+  
+  // Select all text
+  const range = document.createRange();
+  range.selectNodeContents(titleEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  
+  titleEl.focus();
+}
 
+function saveTitleEdit(timer) {
+  const titleEl = timer.element.title;
+  const newTitle = titleEl.textContent.trim();
+  
+  if (newTitle && newTitle !== timer.title) {
+    timer.title = newTitle;
+    saveToStorage(timers); // Need access to timers Map
+  } else {
+    titleEl.textContent = timer.title; // Revert if empty
+  }
+  
+  titleEl.contentEditable = false;
+  titleEl.classList.remove('editing');
+}
+
+// ====== App Logic ======
 function createApp() {
   const timers = loadFromStorage();
   let nextId = 1;
@@ -302,7 +355,7 @@ function createApp() {
   }
 
   // Attach DOM event listeners
-  function attachEventListeners(timer) {
+ function attachEventListeners(timer) {
     timer.element.startBtn.addEventListener('click', function() {
       if (timer.isRunning) {
         pauseTimer(timer);
@@ -322,8 +375,27 @@ function createApp() {
     timer.element.modeSelect.addEventListener('change', function(e) { switchMode(timer, e.target.value); });
     timer.element.deleteBtn.addEventListener('click', function() { removeTimer(timer); });
     timer.element.setBtn.addEventListener('click', function() { setTimerDuration(timer); });
+    
+    timer.element.title.addEventListener('click', function() {
+      if (!timer.element.title.contentEditable || timer.element.title.contentEditable === 'false') {
+        enableTitleEdit(timer);
+      }
+    });
+    
+    timer.element.title.addEventListener('blur', function() {
+      saveTitleEdit(timer);
+    });
+    
+    timer.element.title.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        timer.element.title.blur();
+      } else if (e.key === 'Escape') {
+        timer.element.title.textContent = timer.title;
+        timer.element.title.blur();
+      }
+    });
   }
-
   // Initialize saved timers
   timers.forEach(function(timer) {
     const card = createTimerCard(timer);
@@ -345,4 +417,11 @@ function createApp() {
   });
 
   if (!container) console.warn('timers-container element not found');
+}
+
+// Initialize the app :)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', createApp);
+} else {
+  createApp();
 }
